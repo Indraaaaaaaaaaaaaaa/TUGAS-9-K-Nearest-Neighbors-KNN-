@@ -2,14 +2,50 @@ from flask import Flask, render_template, request, redirect, url_for
 import pickle
 import numpy as np
 import os
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
 
 app = Flask(__name__)
 
-# Load model and scaler
-with open('model.pkl', 'rb') as f:
-    model = pickle.load(f)
-with open('scaler.pkl', 'rb') as f:
-    scaler = pickle.load(f)
+def train_model():
+    # Load dataset
+    df = pd.read_csv('Iris.csv')
+    
+    # Prepare features and target
+    X = df[['SepalLengthCm', 'SepalWidthCm', 'PetalLengthCm', 'PetalWidthCm']]
+    y = df['Species']
+    
+    # Split data
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    
+    # Scale features
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    
+    # Train model
+    model = KNeighborsClassifier(n_neighbors=3)
+    model.fit(X_train_scaled, y_train)
+    
+    # Save model and scaler
+    with open('model.pkl', 'wb') as f:
+        pickle.dump(model, f)
+    with open('scaler.pkl', 'wb') as f:
+        pickle.dump(scaler, f)
+    
+    return model, scaler
+
+# Load or train model
+try:
+    with open('model.pkl', 'rb') as f:
+        model = pickle.load(f)
+    with open('scaler.pkl', 'rb') as f:
+        scaler = pickle.load(f)
+except FileNotFoundError:
+    print("Model files not found. Training new model...")
+    model, scaler = train_model()
+    print("Model training completed!")
 
 @app.route('/')
 def home():
